@@ -1,0 +1,30 @@
+\documentclass{scrartcl}
+\usepackage[a4paper]{geometry}
+
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{longtable}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5\baselineskip}
+
+\begin{document}
+
+\section*{Test Report - \today }
+Tested %d applications. All applications were tested with %d iterations.
+\begin{footnotesize}
+\begin{longtable}{| p{.45\textwidth} | p{.1\textwidth} | p{.1\textwidth} | p{.1\textwidth} | p{.1\textwidth} | p{.1\textwidth} |}
+\hline
+\textbf{Package name} & \textbf{activities, services, receivers} & \textbf{crashed components} & \textbf{crashes total} & \textbf{exceptions total} \\
+\hline
+\endhead
+\hline
+\endfoot
+%s
+\end{longtable}
+This report was generated automatically using LogParser.
+\end{footnotesize}
+
+\end{document}

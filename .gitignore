@@ -1,0 +1,7 @@
+build/
+out/
+logs/
+.gradle/
+.idea/
+*.json
+*.meta
