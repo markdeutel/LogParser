@@ -29,15 +29,15 @@ public class AppLogFileParser
                     {
                         case "IntentFuzzer":
                             String result = handleIntentFuzzerEntry(entry, log);
+                            /*
                             if (result != null)
                                 currIntent = result;
+                                */
                             break;
-                            /*
                         case "IntentBuilder":
                             if (entry.getLevel() == LogEntry.INFO)
                                 currIntent = entry.getMessage();
                             break;
-                            */
                         case "AndroidRuntime":
                             currCrashException = handleRuntimeException(entry, lastEntry, currIntent, currCrashException, log);
                             break;

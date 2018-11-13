@@ -13,82 +13,97 @@ public class MySQLAccess implements Closeable
     private static final String DB_USER = "mark";
     private static final String DB_PWD = "JavaUnit5";
 
-    private final Connection connection;
+    private Connection connection = null;
 
-    public MySQLAccess() throws ClassNotFoundException, SQLException
+    public MySQLAccess(boolean connect) throws ClassNotFoundException, SQLException
     {
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PWD);
+        if (connect)
+        {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PWD);
+        }
     }
 
     public void createTables() throws SQLException
     {
-        // drop tables
-        final String sqlDropExceptionsQuery = "DROP TABLE IF EXISTS Exceptions";
-        final String sqlDropApplicationsQuery = "DROP TABLE IF EXISTS Applications";
-        try(final Statement statement = connection.createStatement())
+        if (connection != null)
         {
-            statement.addBatch(sqlDropExceptionsQuery);
-            statement.addBatch(sqlDropApplicationsQuery);
-            statement.executeBatch();
-        }
+            // drop tables
+            final String sqlDropExceptionsQuery = "DROP TABLE IF EXISTS Exceptions";
+            final String sqlDropApplicationsQuery = "DROP TABLE IF EXISTS Applications";
+            try (final Statement statement = connection.createStatement())
+            {
+                statement.addBatch(sqlDropExceptionsQuery);
+                statement.addBatch(sqlDropApplicationsQuery);
+                statement.executeBatch();
+            }
 
-        // create tables
-        final String sqlCreateApplicationsQuery = "CREATE TABLE Applications (package VARCHAR(255) NOT NULL, activities INTEGER, services INTEGER, " +
-                "receivers INTEGER, PRIMARY KEY ( package ))";
-        final String sqlCreateExceptionsQuery = "CREATE TABLE Exceptions (package VARCHAR(255) NOT NULL, component VARCHAR(255) not NULL, number INTEGER NOT NULL, " +
-                "type ENUM('CRASH', 'EXCEPTION'), exception VARCHAR(255), message VARCHAR(4000), cause VARCHAR(8000), PRIMARY KEY ( number, package ), FOREIGN KEY ( package ) REFERENCES Applications( package ))";
-        try(final Statement statement = connection.createStatement())
-        {
-            statement.addBatch(sqlCreateApplicationsQuery);
-            statement.addBatch(sqlCreateExceptionsQuery);
-            statement.executeBatch();
+            // create tables
+            final String sqlCreateApplicationsQuery = "CREATE TABLE Applications (package VARCHAR(255) NOT NULL, activities INTEGER, services INTEGER, " +
+                    "receivers INTEGER, PRIMARY KEY ( package ))";
+            final String sqlCreateExceptionsQuery = "CREATE TABLE Exceptions (package VARCHAR(255) NOT NULL, component VARCHAR(255) not NULL, number INTEGER NOT NULL, " +
+                    "type ENUM('CRASH', 'EXCEPTION'), exception VARCHAR(255), message VARCHAR(4000), cause VARCHAR(8000), PRIMARY KEY ( number, package ), FOREIGN KEY ( package ) REFERENCES Applications( package ))";
+            try (final Statement statement = connection.createStatement())
+            {
+                statement.addBatch(sqlCreateApplicationsQuery);
+                statement.addBatch(sqlCreateExceptionsQuery);
+                statement.executeBatch();
+            }
         }
     }
 
     public void insertApplicationLog(final ApplicationLog log) throws SQLException
     {
-        // insert application data
-        insertApplication(log);
-
-        // insert all crashes detected in this application
-        int number = 0;
-        for (final String key : log.getCrashes().keySet())
+        if (connection != null)
         {
-            for (final LogException exception : log.getCrashes().get(key))
+            // insert application data
+            insertApplication(log);
+
+            // insert all crashes detected in this application
+            int number = 0;
+            for (final String key : log.getCrashes().keySet())
             {
-                insertLogcatException(number, "CRASH", log.getPackageName(), exception);
-                number++;
+                for (final LogException exception : log.getCrashes().get(key))
+                {
+                    insertLogcatException(number, "CRASH", log.getPackageName(), exception);
+                    number++;
+                }
             }
         }
     }
 
     private void insertLogcatException(int number, final String type, final String packageName, final LogException exception) throws SQLException
     {
-        final String sqlQuery = "INSERT INTO Exceptions (package, component, number, type, exception, message, cause) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try(final PreparedStatement statement = connection.prepareStatement(sqlQuery))
+        if (connection != null)
         {
-            statement.setString(1, packageName);
-            statement.setString(2, exception.getComponent());
-            statement.setInt(3, number);
-            statement.setString(4, type);
-            statement.setString(5, exception.getType());
-            statement.setString(6, exception.getMessage());
-            statement.setString(7, exception.getCause());
-            statement.execute();
+            final String sqlQuery = "INSERT INTO Exceptions (package, component, number, type, exception, message, cause) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            try (final PreparedStatement statement = connection.prepareStatement(sqlQuery))
+            {
+                statement.setString(1, packageName);
+                statement.setString(2, exception.getComponent());
+                statement.setInt(3, number);
+                statement.setString(4, type);
+                statement.setString(5, exception.getType());
+                statement.setString(6, exception.getMessage());
+                statement.setString(7, exception.getCause());
+                statement.execute();
+            }
         }
     }
 
     private void insertApplication(final ApplicationLog log) throws SQLException
     {
-        final String sqlQuery = "INSERT INTO Applications (package, activities, services, receivers) VALUES (?, ?, ?, ?)";
-        try(final PreparedStatement statement = connection.prepareStatement(sqlQuery))
+        if (connection != null)
         {
-            statement.setString(1, log.getPackageName());
-            statement.setInt(2, log.getActivities());
-            statement.setInt(3, log.getServices());
-            statement.setInt(4, log.getReceivers());
-            statement.execute();
+            final String sqlQuery = "INSERT INTO Applications (package, activities, services, receivers) VALUES (?, ?, ?, ?)";
+            try (final PreparedStatement statement = connection.prepareStatement(sqlQuery))
+            {
+                statement.setString(1, log.getPackageName());
+                statement.setInt(2, log.getActivities());
+                statement.setInt(3, log.getServices());
+                statement.setInt(4, log.getReceivers());
+                statement.execute();
+            }
         }
     }
 
