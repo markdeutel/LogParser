@@ -102,7 +102,7 @@ public class FileParser
             if (!line.startsWith("at") && !line.startsWith("Caused by"))
             {
                 final Scanner lineScanner = new Scanner(line);
-                while(lineScanner.hasNext())
+                while (lineScanner.hasNext())
                 {
                     String token = lineScanner.next();
                     if (token.contains("Exception"))

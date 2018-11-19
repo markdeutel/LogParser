@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Scanner;
 
 public class AppLogFileParser
@@ -25,31 +26,38 @@ public class AppLogFileParser
                 final LogEntry entry = new LogEntry(line);
                 if (entry.isValid())
                 {
-                    switch (entry.getTag())
+                    try
                     {
-                        case "IntentFuzzer":
-                            String result = handleIntentFuzzerEntry(entry, log);
+                        switch (entry.getTag())
+                        {
+                            case "IntentFuzzer":
+                                handleIntentFuzzerEntry(entry, log);
                             /*
                             if (result != null)
                                 currIntent = result;
                                 */
-                            break;
-                        case "IntentBuilder":
-                            if (entry.getLevel() == LogEntry.INFO)
-                                currIntent = entry.getMessage();
-                            break;
-                        case "AndroidRuntime":
-                            currCrashException = handleRuntimeException(entry, lastEntry, currIntent, currCrashException, log);
-                            break;
-                        default:
-                            // exceptions logged by classes contain the type of the exception in the firs stacktrace line
-                            // all other lines start with at or caused by
-                            if (entry.getMessage().matches(EXCEPTION_START_PATTERN))
-                                currException = handleException(true, entry, currIntent, currException, log);
-                            else if (entry.getMessage().matches(EXCEPTION_PATTERN))
-                                currException = handleException(false, entry, currIntent, currException, log);
+                                break;
+                            case "IntentBuilder":
+                                if (entry.getLevel() == LogEntry.INFO)
+                                    currIntent = entry.getMessage();
+                                break;
+                            case "AndroidRuntime":
+                                currCrashException = handleRuntimeException(entry, lastEntry, currIntent, currCrashException, log);
+                                break;
+                            default:
+                                // exceptions logged by classes contain the type of the exception in the firs stacktrace line
+                                // all other lines start with at or caused by
+                                if (entry.getMessage().matches(EXCEPTION_START_PATTERN))
+                                    currException = handleException(true, entry, currIntent, currException, log);
+                                else if (entry.getMessage().matches(EXCEPTION_PATTERN))
+                                    currException = handleException(false, entry, currIntent, currException, log);
 
-                            break;
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        continue;
                     }
                 }
                 lastEntry = entry;
@@ -61,41 +69,35 @@ public class AppLogFileParser
         }
     }
 
-    private static String handleIntentFuzzerEntry(final LogEntry entry, final ApplicationLog log)
+    private static void handleIntentFuzzerEntry(final LogEntry entry, final ApplicationLog log)
     {
-        String intent = null;
         String message = entry.getMessage();
         String[] tokens = message.split(":");
-        if (tokens.length == 2)
+        if (tokens.length != 2)
+            return;
+
+        switch (tokens[0])
         {
-            switch (tokens[0])
-            {
-                case "Packagename":
-                    log.setPackageName(tokens[1].trim());
-                    break;
-                case "Number of iterations":
-                    log.setIterations(Integer.parseInt(tokens[1].trim()));
-                    break;
-                case "Exported receivers":
-                    log.setReceivers(Integer.parseInt(tokens[1].trim()));
-                    break;
-                case "Exported activities":
-                    log.setActivities(Integer.parseInt(tokens[1].trim()));
-                    break;
-                case "Exported services":
-                    log.setServices(Integer.parseInt(tokens[1].trim()));
-                    break;
-            }
+            case "Packagename":
+                log.setPackageName(tokens[1].trim());
+                break;
+            case "Number of iterations":
+                log.setIterations(Integer.parseInt(tokens[1].trim()));
+                break;
+            case "Exported receivers":
+                log.setReceivers(Integer.parseInt(tokens[1].trim()));
+                break;
+            case "Exported activities":
+                log.setActivities(Integer.parseInt(tokens[1].trim()));
+                break;
+            case "Exported services":
+                log.setServices(Integer.parseInt(tokens[1].trim()));
+                break;
         }
-        else
-        {
-            intent = message;
-        }
-        return intent;
     }
 
     private static LogException handleRuntimeException(final LogEntry entry, final LogEntry lastEntry, final String intent,
-                                               LogException currException, final ApplicationLog log)
+                                                       LogException currException, final ApplicationLog log)
     {
         // A new crash stacktrace starts
         if (entry.getLevel() == LogEntry.ERROR && lastEntry.getLevel() != LogEntry.ERROR)
@@ -113,7 +115,7 @@ public class AppLogFileParser
     }
 
     private static LogException handleException(boolean start, final LogEntry entry, final String intent,
-                                                       LogException currException, final ApplicationLog log)
+                                                LogException currException, final ApplicationLog log)
     {
         // A new crash stacktrace starts
         if (start)
@@ -134,8 +136,11 @@ public class AppLogFileParser
     {
         if (exception != null)
         {
-            setExceptionTypeAndMessage(exception);
-            log.putCrash(exception.getComponent(), exception);
+            if (checkChrasedProcess(exception, log))
+            {
+                setExceptionTypeAndMessage(exception);
+                log.putCrash(exception.getComponent(), exception);
+            }
         }
     }
 
@@ -143,8 +148,11 @@ public class AppLogFileParser
     {
         if (exception != null)
         {
-            setExceptionTypeAndMessage(exception);
-            log.putException(exception.getComponent(), exception);
+            if (exception.getStacktrace().size() >= 2)
+            {
+                setExceptionTypeAndMessage(exception);
+                log.putException(exception.getComponent(), exception);
+            }
         }
     }
 
@@ -167,7 +175,7 @@ public class AppLogFileParser
             if (!line.startsWith("at") && !line.startsWith("Caused by"))
             {
                 final Scanner lineScanner = new Scanner(line);
-                while(lineScanner.hasNext())
+                while (lineScanner.hasNext())
                 {
                     String token = lineScanner.next();
                     if (token.contains("Exception"))
@@ -178,6 +186,17 @@ public class AppLogFileParser
                 }
             }
         }
+    }
+
+    private static boolean checkChrasedProcess(final LogException exception, final ApplicationLog log)
+    {
+        final List<String> stacktrace = exception.getStacktrace();
+        if (stacktrace.size() <= 2)
+            return false;
+
+        String line = stacktrace.get(1);
+        line = line.substring(line.indexOf(":") + 1, line.indexOf(',')).trim();
+        return line.equals(log.getPackageName());
     }
 
     /*

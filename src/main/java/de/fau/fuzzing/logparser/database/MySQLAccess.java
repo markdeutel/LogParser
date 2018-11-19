@@ -1,5 +1,6 @@
 package de.fau.fuzzing.logparser.database;
 
+import de.fau.fuzzing.logparser.ApplicationProperties;
 import de.fau.fuzzing.logparser.parser.ApplicationLog;
 import de.fau.fuzzing.logparser.parser.LogException;
 
@@ -8,19 +9,17 @@ import java.sql.*;
 
 public class MySQLAccess implements Closeable
 {
-    private static final String DB_URL = "jdbc:mysql://localhost/LogcatTestResults?useUnicode=true&" +
-            "useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC";
-    private static final String DB_USER = "mark";
     private static final String DB_PWD = "JavaUnit5";
 
     private Connection connection = null;
 
-    public MySQLAccess(boolean connect) throws ClassNotFoundException, SQLException
+    public MySQLAccess(final String databasePwd) throws ClassNotFoundException, SQLException
     {
-        if (connect)
+        if (databasePwd != null)
         {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PWD);
+            final ApplicationProperties properties = ApplicationProperties.getInstance();
+            connection = DriverManager.getConnection(properties.getDatabaseUrl(), properties.getDatabaseUserName(), databasePwd);
         }
     }
 
@@ -42,7 +41,7 @@ public class MySQLAccess implements Closeable
             final String sqlCreateApplicationsQuery = "CREATE TABLE Applications (package VARCHAR(255) NOT NULL, activities INTEGER, services INTEGER, " +
                     "receivers INTEGER, PRIMARY KEY ( package ))";
             final String sqlCreateExceptionsQuery = "CREATE TABLE Exceptions (package VARCHAR(255) NOT NULL, component VARCHAR(255) not NULL, number INTEGER NOT NULL, " +
-                    "type ENUM('CRASH', 'EXCEPTION'), exception VARCHAR(255), message VARCHAR(4000), cause VARCHAR(8000), PRIMARY KEY ( number, package ), FOREIGN KEY ( package ) REFERENCES Applications( package ))";
+                    "type ENUM('CRASH', 'EXCEPTION'), exceptionType VARCHAR(255), exceptionMessage VARCHAR(4000), cause VARCHAR(8000), PRIMARY KEY ( number, package ), FOREIGN KEY ( package ) REFERENCES Applications( package ))";
             try (final Statement statement = connection.createStatement())
             {
                 statement.addBatch(sqlCreateApplicationsQuery);
@@ -66,6 +65,15 @@ public class MySQLAccess implements Closeable
                 for (final LogException exception : log.getCrashes().get(key))
                 {
                     insertLogcatException(number, "CRASH", log.getPackageName(), exception);
+                    number++;
+                }
+            }
+
+            for (final String key : log.getCrashes().keySet())
+            {
+                for (final LogException exception : log.getExceptions().get(key))
+                {
+                    insertLogcatException(number, "EXCEPTION", log.getPackageName(), exception);
                     number++;
                 }
             }
