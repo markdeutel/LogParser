@@ -6,11 +6,11 @@ import java.util.List;
 public class LogException
 {
     private final List<String> stacktrace = new ArrayList<>();
-    private transient String component;
-    private transient boolean crash;
-    private String type;
-    private String message;
-    private String cause;
+    private transient String component = null;
+    private transient boolean crash = false;
+    private String type = null;
+    private String message = null;
+    private String cause = null;
 
     public boolean isCrash()
     {
@@ -70,5 +70,10 @@ public class LogException
     public void setComponent(String component)
     {
         this.component = component;
+    }
+
+    public boolean isValid()
+    {
+        return stacktrace.size() >= 2 && component != null && type != null && message != null && cause != null;
     }
 }

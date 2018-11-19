@@ -84,7 +84,7 @@ public class MySQLAccess implements Closeable
     {
         if (connection != null)
         {
-            final String sqlQuery = "INSERT INTO Exceptions (package, component, number, type, exception, message, cause) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            final String sqlQuery = "INSERT INTO Exceptions (package, component, number, type, exceptionType, exceptionMessage, cause) VALUES (?, ?, ?, ?, ?, ?, ?)";
             try (final PreparedStatement statement = connection.prepareStatement(sqlQuery))
             {
                 statement.setString(1, packageName);

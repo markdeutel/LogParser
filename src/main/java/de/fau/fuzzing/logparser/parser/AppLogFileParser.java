@@ -32,10 +32,6 @@ public class AppLogFileParser
                         {
                             case "IntentFuzzer":
                                 handleIntentFuzzerEntry(entry, log);
-                            /*
-                            if (result != null)
-                                currIntent = result;
-                                */
                                 break;
                             case "IntentBuilder":
                                 if (entry.getLevel() == LogEntry.INFO)
@@ -47,11 +43,7 @@ public class AppLogFileParser
                             default:
                                 // exceptions logged by classes contain the type of the exception in the firs stacktrace line
                                 // all other lines start with at or caused by
-                                if (entry.getMessage().matches(EXCEPTION_START_PATTERN))
-                                    currException = handleException(true, entry, currIntent, currException, log);
-                                else if (entry.getMessage().matches(EXCEPTION_PATTERN))
-                                    currException = handleException(false, entry, currIntent, currException, log);
-
+                                currException = handleException(entry, currIntent, currException, log);
                                 break;
                         }
                     }
@@ -114,21 +106,23 @@ public class AppLogFileParser
         return currException;
     }
 
-    private static LogException handleException(boolean start, final LogEntry entry, final String intent,
+    private static LogException handleException(final LogEntry entry, final String intent,
                                                 LogException currException, final ApplicationLog log)
     {
         // A new crash stacktrace starts
-        if (start)
+        if (entry.getMessage().matches(EXCEPTION_START_PATTERN))
         {
             addException(currException, log);
             currException = new LogException();
             currException.setCause(intent);
             currException.setComponent(getComponentName(intent));
             currException.setCrash(true);
-        }
-
-        if (currException != null)
             currException.addStacktraceLine(entry.getMessage());
+        }
+        else if (entry.getMessage().matches(EXCEPTION_PATTERN) && currException != null)
+        {
+            currException.addStacktraceLine(entry.getMessage());
+        }
         return currException;
     }
 
@@ -139,7 +133,8 @@ public class AppLogFileParser
             if (checkChrasedProcess(exception, log))
             {
                 setExceptionTypeAndMessage(exception);
-                log.putCrash(exception.getComponent(), exception);
+                if (exception.isValid())
+                    log.putCrash(exception.getComponent(), exception);
             }
         }
     }
@@ -148,11 +143,9 @@ public class AppLogFileParser
     {
         if (exception != null)
         {
-            if (exception.getStacktrace().size() >= 2)
-            {
-                setExceptionTypeAndMessage(exception);
+            setExceptionTypeAndMessage(exception);
+            if (exception.isValid())
                 log.putException(exception.getComponent(), exception);
-            }
         }
     }
 
