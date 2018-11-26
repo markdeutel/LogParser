@@ -12,8 +12,8 @@ $ ./gradlew fatJar # build standalone jar
 # Options and Configuration
 The `LogParser` tool offers a range of command line options
  - *-h*: print the help dialog
- - *-f*: specify an folder containing logcat output stored in files having the file extension `.app.log`
- - *-o*: specify an folder for generated result files
+ - *-f*: specify a folder containing logcat output stored in files having the file extension `.app.log`
+ - *-o*: specify a folder for generated result files
  - *-d*: specify whether the generated output shall be stored in a specified mySQL database
  - *-p*: specify a new database url (path). The url will be used until a new one is defined.
  - *-u*: specify a new database account which shall be used to store the data. The account will be used until a new one is defined
